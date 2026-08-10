@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flappy Bird - Rev 3</title>
+<style>
+*{box-sizing:border-box}
+body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:#222;
+    font-family:Arial,sans-serif;
+    overflow:hidden;
+}
+.game-wrapper{
+    position:relative;
+    width:min(420px,96vw);
+}
+canvas{
+    touch-action:none;
+    user-select:none;
+    -webkit-user-select:none;
+    display:block;
+    width:100%;
+    aspect-ratio:420/650;
+    border:4px solid #222;
+    border-radius:12px;
+    box-shadow:0 10px 30px rgba(0,0,0,.4);
+    background:#70c5ce;
+    cursor:pointer;
+}
+.top-hud{position:absolute;top:0;left:0;width:100%;pointer-events:none;z-index:2}.score{
+    position:absolute;
+    top:18px;
+    left:0;
+    width:100%;
+    text-align:center;
+    font-size:48px;
+    font-weight:bold;
+    color:white;
+    text-shadow:3px 3px 0 #333;
+    pointer-events:none;
+}
+.level{position:absolute;top:22px;right:16px;padding:7px 10px;border-radius:8px;background:rgba(0,0,0,.35);color:white;font-weight:bold;font-size:14px;text-shadow:1px 1px 0 #333}.message{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    width:82%;
+    padding:24px;
+    text-align:center;
+    background:rgba(255,255,255,.94);
+    border-radius:16px;
+    box-shadow:0 8px 25px rgba(0,0,0,.3);
+}
+.message h1{margin:0 0 10px;font-size:32px}
+.message p{margin:8px 0}
+button{
+    margin-top:12px;
+    border:0;
+    padding:12px 25px;
+    border-radius:10px;
+    background:#f5a623;
+    color:white;
+    font-size:18px;
+    font-weight:bold;
+    cursor:pointer;
+}
+button:hover{filter:brightness(1.08)}
+.hidden{display:none}
+.color-picker{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    margin-top:14px;
+    font-weight:bold;
+}
+.color-picker input{
+    width:42px;
+    height:34px;
+    padding:2px;
+    border:2px solid #ddd;
+    border-radius:8px;
+    cursor:pointer;
+}
+.main-menu{
+    max-height:92%;
+    overflow-y:auto;
+}
+.menu-subtitle{
+    color:#555;
+    font-size:14px;
+}
+.phase-title{
+    margin:18px 0 8px;
+    font-size:18px;
+}
+.continue-card{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin:14px 0 4px;
+    padding:10px 12px;
+    border-radius:12px;
+    background:#fff3d6;
+    border:2px solid #f5a623;
+    text-align:left;
+}
+.continue-card div{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+}
+.continue-card span{
+    font-size:12px;
+    color:#666;
+}
+.continue-card button{
+    margin:0;
+    padding:8px 13px;
+    font-size:14px;
+}
+ .phase-list{
+    display:grid;
+    grid-template-columns:repeat(7,minmax(0,1fr));
+    gap:8px;
+    margin-top:12px;
+    padding:4px 2px 8px;
+    max-height:245px;
+    overflow-y:auto;
+}
+.phase-item{
+    position:relative;
+    border:2px solid #d8e6ef;
+    margin:0;
+    padding:7px 3px 6px;
+    min-width:0;
+    min-height:67px;
+    border-radius:10px;
+    background:linear-gradient(#f8fcff,#dfeaf0);
+    color:#24404d;
+    font-size:12px;
+    font-weight:bold;
+    cursor:pointer;
+    box-shadow:0 3px 0 #aabcc4,0 5px 8px rgba(0,0,0,.12);
+    transition:transform .12s,filter .12s,box-shadow .12s;
+}
+.phase-item:hover:not(:disabled){
+    transform:translateY(-2px);
+    filter:brightness(1.04);
+    box-shadow:0 5px 0 #aabcc4,0 7px 10px rgba(0,0,0,.14);
+}
+.phase-item:active:not(:disabled){
+    transform:translateY(1px);
+    box-shadow:0 2px 0 #aabcc4;
+}
+.phase-item .phase-name{
+    display:block;
+    font-size:12px;
+    line-height:1.15;
+}
+.phase-item .phase-stars{
+    display:block;
+    margin-top:5px;
+    letter-spacing:1px;
+    font-size:11px;
+    color:#f2b900;
+    text-shadow:1px 1px 0 rgba(0,0,0,.12);
+}
+.phase-item .phase-best{
+    display:block;
+    margin-top:3px;
+    font-size:9px;
+    opacity:.85;
+}
+.phase-item.completed{
+    border-color:#9bd27e;
+    background:linear-gradient(#dff5d2,#9dd57e);
+    color:#24551d;
+}
+.phase-item.current{
+    border-color:#ffd36a;
+    background:linear-gradient(#fff1b5,#f6b63d);
+    color:#633b00;
+}
+.phase-item.locked{
+    opacity:.5;
+    cursor:not-allowed;
+    filter:grayscale(.3);
+}
+.phase-item.next{
+    outline:3px solid #f5a623;
+    outline-offset:1px;
+}
+@media (max-width:430px){
+    .phase-list{
+        grid-template-columns:repeat(5,minmax(0,1fr));
+        gap:7px;
+        max-height:300px;
+    }
+    .phase-item{
+        min-height:64px;
+        padding:7px 2px 5px;
+    }
+}
+.save-status{
+    margin-top:9px;
+    font-size:13px;
+    color:#555;
+}
+.controls{
+    text-align:center;
+    color:white;
+    margin-top:10px;
+    font-size:14px;
+}
+
+.finish-line{
+    position:absolute;
+    top:0;
+    width:14px;
+    height:calc(100% - 70px);
+    pointer-events:none;
+    z-index:1;
+}
+.finish-label{
+    position:absolute;
+    top:72px;
+    left:-18px;
+    font-size:16px;
+    font-weight:bold;
+    color:#222;
+    background:white;
+    padding:4px 6px;
+    border-radius:5px;
+    white-space:nowrap;
+}
+""</style>
+</head>
+
+<body>
+
+<div class="game-wrapper">
+    <canvas id="game" width="420" height="650"></canvas>
+
+    <div id="finishLine" class="finish-line hidden"></div>
+    <div class="top-hud">
+        <div class="score" id="score">0</div>
+        <div class="level" id="level">FASE 1</div>
+    </div>
+
+    <div class="message main-menu" id="message">
+        <h1>🐤 Flappy</h1>
+        <p class="menu-subtitle">Escolha sua fase e tente chegar cada vez mais longe!</p>
+
+        <div class="continue-card hidden" id="continueCard">
+            <div>
+                <strong>▶ Continuar</strong>
+                <span id="continueText">Fase 1</span>
+            </div>
+            <button id="loadButton">Continuar</button>
+        </div>
+
+        <h2 class="phase-title">FASES</h2><p class="menu-subtitle">⭐ 1 = terminou • ⭐⭐ = rápido • ⭐⭐⭐ = muito rápido</p>
+        <div class="phase-list" id="phaseList"></div>
+
+        <div class="color-picker">
+            <label for="birdColor">🐤 Cor do pássaro:</label>
+            <input id="birdColor" type="color" value="#ffd43b" aria-label="Escolher cor do pássaro">
+        </div>
+
+        <button id="startButton">Jogar Fase 1</button>
+        <div id="saveStatus" class="save-status"></div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const scoreElement = document.getElementById("score");
+const message = document.getElementById("message");
+const startButton = document.getElementById("startButton");
+const loadButton = document.getElementById("loadButton");
+const birdColorInput = document.getElementById("birdColor");
+const saveStatus = document.getElementById("saveStatus");
+const SAVE_KEY = "flappyJogoRev5Save";
+const TOTAL_PHASES = 21;
+
+const W = canvas.width;
+const H = canvas.height;
+
+let bird;
+let pipes;
+let score;
+let gameRunning = false;
+let gameOver = false;
+let animationId;
+let lastTime = 0;
+let pipeTimer=0, bulletTimer=0, level=1, bullets=[], particles=[], levelBannerTimer=0;
+let finishActive=false;
+let finishX=W+80;
+let phaseComplete=false;
+let birdColor="#ffd43b";
+let saveTimer=0;
+let phaseTime=0;
+let completedPhases=[];
+let phaseStars={};
+let phaseBestTimes={};
+let lastPlayedPhase=1;
+let selectedPhase=1;
+window.phaseBestTimes=phaseBestTimes;
+const gravity=1450, jumpStrength=-430, pipeWidth=72, groundHeight=70, POINTS_PER_LEVEL=20;
+function getDifficulty(){
+    const phase = Math.max(0, level-1);
+    return {
+        // Canos ficam progressivamente mais rápidos.
+        pipeSpeed:185 + phase*34,
+        pipeGap:Math.max(102,170 - phase*9),
+        // Intervalo também diminui para aumentar a frequência.
+        pipeInterval:Math.max(.62,1.45 - phase*.09),
+        movingPipes:level>=2,
+        // Movimento mais rápido e com amplitude maior nas fases avançadas.
+        movingStrength:Math.min(105,24 + phase*11),
+        movingSpeed:Math.min(2.7,0.95 + phase*.16),
+        bullets:level>=3,
+        // Bolas de fogo aparecem com mais frequência conforme a fase avança.
+        bulletInterval:Math.max(.42,1.75 - phase*.12),
+        bulletSpeed:280 + phase*42
+    };
+}
+
+function getSaveData(){
+    return {
+        level,
+        score,
+        birdColor,
+        completedPhases:[...new Set(completedPhases)].sort((a,b)=>a-b),
+        phaseStars,
+        phaseBestTimes,
+        lastPlayedPhase,
+        savedAt:Date.now()
+    };
+}
+
+function saveGame(showMessage=true){
+    try{
+        localStorage.setItem(SAVE_KEY, JSON.stringify(getSaveData()));
+        if(showMessage){
+            saveStatus.textContent="Jogo salvo neste navegador.";
+        }
+        updateLoadButton();
+renderPhaseList();
+selectedPhase=1;
+startButton.textContent="Jogar Fase 1";
+        renderPhaseList();
+        return true;
+    }catch(error){
+        if(showMessage) saveStatus.textContent="Não foi possível salvar o jogo.";
+        return false;
+    }
+}
+
+function getPhaseStars(phase){
+    return Math.max(0,Math.min(3,Number(phaseStars[phase])||0));
+}
+
+function getPhaseTimeTarget(phase){
+    // Tempo de referência cresce um pouco nas fases mais avançadas.
+    return 30 + Math.max(0,phase-1)*3;
+}
+
+function calculateStars(elapsedSeconds){
+    const target=getPhaseTimeTarget(level);
+
+    // 3 estrelas: muito mais rápido que o tempo de referência.
+    if(elapsedSeconds <= target*0.70) return 3;
+
+    // 2 estrelas: dentro de um bom tempo.
+    if(elapsedSeconds <= target*0.85) return 2;
+
+    // 1 estrela: completou a fase.
+    return 1;
+}
+
+function starsText(count){
+    return "★".repeat(count) + "☆".repeat(3-count);
+}
+
+function renderPhaseList(){
+    const list=document.getElementById("phaseList");
+    if(!list) return;
+
+    list.innerHTML="";
+
+    for(let p=1;p<=TOTAL_PHASES;p++){
+        const button=document.createElement("button");
+        button.className="phase-item";
+
+        const completed=completedPhases.includes(p);
+        const unlocked=p<=lastPlayedPhase+1 || completed;
+        const stars=getPhaseStars(p);
+        const bestTime=(window.phaseBestTimes && window.phaseBestTimes[p]) || null;
+
+        if(completed) button.classList.add("completed");
+        if(p===level && gameRunning) button.classList.add("current");
+        if(p===lastPlayedPhase+1 && !completed) button.classList.add("next");
+        if(!unlocked) button.classList.add("locked");
+
+        const icon=completed ? "✓" : (unlocked ? "▶" : "🔒");
+        button.innerHTML=`
+            <span class="phase-name">${icon} ${p}</span>
+            <span class="phase-stars">${starsText(stars)}</span>
+            ${bestTime ? `<span class="phase-best">⏱️ ${Number(bestTime).toFixed(1)}s</span>` : ""}
+        `;
+
+        button.setAttribute("aria-label", unlocked ? `Jogar fase ${p}` : `Fase ${p} bloqueada`);
+
+        if(unlocked){
+            button.addEventListener("click",()=>selectPhase(p));
+        }else{
+            button.disabled=true;
+        }
+
+        list.appendChild(button);
+    }
+
+    const continueCard=document.getElementById("continueCard");
+    const continueText=document.getElementById("continueText");
+    const continueButton=document.getElementById("loadButton");
+
+    if(continueCard && continueText && continueButton){
+        const saved=getSavedGame();
+        if(saved){
+            const continuePhase=Math.max(1,Number(saved.lastPlayedPhase)||Number(saved.level)||1);
+            continueText.textContent=`Fase ${continuePhase}${saved.completedPhases?.includes(continuePhase) ? " • concluída" : ""}`;
+            continueCard.classList.remove("hidden");
+        }else{
+            continueCard.classList.add("hidden");
+        }
+    }
+
+    if(startButton){
+        startButton.textContent=`Jogar Fase ${selectedPhase || 1}`;
+    }
+}
+
+function selectPhase(targetPhase){
+    // Só permite escolher fases já concluídas ou a próxima fase desbloqueada.
+    const unlocked=targetPhase<=level+1 || completedPhases.includes(targetPhase);
+    if(!unlocked) return;
+
+    selectedPhase=targetPhase;
+    lastPlayedPhase=targetPhase;
+
+    if(gameRunning){
+        saveGame(false);
+        gameRunning=false;
+        cancelAnimationFrame(animationId);
+    }
+
+    level=targetPhase;
+    score=0;
+    scoreElement.textContent="0";
+    document.getElementById("level").textContent=`FASE ${level}`;
+    renderPhaseList();
+
+    bird={x:105,y:H/2,radius:17,velocity:0,rotation:0};
+    pipes=[]; bullets=[]; particles=[];
+    pipeTimer=0; bulletTimer=0; levelBannerTimer=0; saveTimer=0; phaseTime=0;
+    const phaseTimeElement=document.getElementById("phaseTime");
+    if(phaseTimeElement) phaseTimeElement.textContent="⏱️ 0.0s";
+    finishActive=false; finishX=W+80;
+    phaseComplete=false;
+    gameOver=false;
+
+    message.classList.add("hidden");
+    lastTime=performance.now();
+    gameRunning=true;
+    animationId=requestAnimationFrame(gameLoop);
+    flap();
+    renderPhaseList();
+}
+
+function getSavedGame(){
+    try{
+        const raw=localStorage.getItem(SAVE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    }catch(error){
+        return null;
+    }
+}
+
+function updateLoadButton(){
+    const saved=getSavedGame();
+    if(saved && Number.isFinite(saved.level) && Number.isFinite(saved.score)){
+        loadButton.classList.remove("hidden");
+    }else{
+        loadButton.classList.add("hidden");
+    }
+}
+
+function loadGame(){
+    const saved=getSavedGame();
+    if(!saved) return;
+
+    cancelAnimationFrame(animationId);
+
+    level=Math.max(1,Math.floor(saved.level));
+    score=Math.max(0,Math.floor(saved.score));
+    completedPhases=Array.isArray(saved.completedPhases)
+        ? [...new Set(saved.completedPhases.map(Number).filter(Number.isFinite).map(Math.floor).filter(n=>n>=1))]
+        : [];
+    phaseStars=(saved.phaseStars && typeof saved.phaseStars==="object") ? saved.phaseStars : {};
+    phaseBestTimes=(saved.phaseBestTimes && typeof saved.phaseBestTimes==="object") ? saved.phaseBestTimes : {};
+    window.phaseBestTimes=phaseBestTimes;
+    lastPlayedPhase=Math.max(1,Number(saved.lastPlayedPhase)||level);
+    selectedPhase=level;
+    birdColor=saved.birdColor || "#ffd43b";
+
+    birdColorInput.value=birdColor;
+    scoreElement.textContent=score;
+    document.getElementById("level").textContent=`FASE ${level}`;
+
+    bird={x:105,y:H/2,radius:17,velocity:0,rotation:0};
+    pipes=[]; bullets=[]; particles=[];
+    pipeTimer=0; bulletTimer=0;
+    finishActive=false; finishX=W+80;
+    phaseComplete=false;
+    gameOver=false;
+    gameRunning=true;
+
+    message.classList.add("hidden");
+    saveStatus.textContent="Jogo salvo carregado.";
+    lastTime=performance.now();
+    animationId=requestAnimationFrame(gameLoop);
+    flap();
+}
+
+function resetGame(){
+    bird={x:105,y:H/2,radius:17,velocity:0,rotation:0};
+    pipes=[]; bullets=[]; particles=[]; score=0; level=1;
+    completedPhases=[];
+    phaseStars={};
+    lastPlayedPhase=1;
+    selectedPhase=1;
+    pipeTimer=0; bulletTimer=0; levelBannerTimer=0; saveTimer=0; phaseTime=0;
+    const phaseTimeElement=document.getElementById("phaseTime");
+    if(phaseTimeElement) phaseTimeElement.textContent="⏱️ 0.0s";
+    finishActive=false; finishX=W+80; phaseComplete=false;
+    birdColor=birdColorInput.value || "#ffd43b";
+    scoreElement.textContent="0";
+    document.getElementById("level").textContent="FASE 1";
+}
+
+function startGame(){
+    cancelAnimationFrame(animationId);
+
+    const chosenPhase=Math.max(1,Number(selectedPhase)||1);
+    resetGame();
+
+    level=chosenPhase;
+    lastPlayedPhase=chosenPhase;
+    selectedPhase=chosenPhase;
+    score=0;
+    scoreElement.textContent="0";
+    document.getElementById("level").textContent=`FASE ${level}`;
+
+    gameRunning = true;
+    gameOver = false;
+    message.classList.add("hidden");
+
+    lastTime = performance.now();
+
+    animationId = requestAnimationFrame(gameLoop);
+
+    flap();
+}
+
+function flap(){
+    if(!gameRunning){
+        if(!phaseComplete) startGame();
+        return;
+    }
+
+    if(gameOver){
+        return;
+    }
+
+    bird.velocity = jumpStrength;
+}
+
+function startNextPhase(){
+    if(!phaseComplete) return;
+
+    cancelAnimationFrame(animationId);
+
+    level++;
+    selectedPhase=level;
+    lastPlayedPhase=level;
+    phaseComplete=false;
+    gameOver=false;
+    gameRunning=true;
+
+    // Mantém a pontuação e prepara a nova fase do zero.
+    bird={x:105,y:H/2,radius:17,velocity:0,rotation:0};
+    pipes=[];
+    bullets=[];
+    particles=[];
+    pipeTimer=0;
+    bulletTimer=0;
+    finishActive=false;
+    finishX=W+80;
+
+    document.getElementById("level").textContent=`FASE ${level}`;
+    scoreElement.textContent=score;
+    birdColorInput.value=birdColor;
+    message.classList.add("hidden");
+    saveGame(false);
+
+    lastTime=performance.now();
+    animationId=requestAnimationFrame(gameLoop);
+    flap();
+}
+
+function createPipe(){
+    const d=getDifficulty(), minTop=90, maxTop=H-groundHeight-d.pipeGap-90;
+    const topHeight=minTop+Math.random()*Math.max(1,maxTop-minTop);
+    pipes.push({x:W+20,baseTop:topHeight,top:topHeight,bottom:topHeight+d.pipeGap,gap:d.pipeGap,passed:false,
+        moving:d.movingPipes&&Math.random()<.88,
+        moveOffset:Math.random()*Math.PI*2,
+        moveSpeed:d.movingSpeed*(0.75+Math.random()*0.7),
+        moveDirection:Math.random()<.5?-1:1
+    });
+}
+
+function update(delta){
+    const d=getDifficulty();
+    bird.velocity+=gravity*delta; bird.y+=bird.velocity*delta;
+    bird.rotation=Math.min(Math.max(bird.velocity/700,-.5),1.1);
+    pipeTimer+=delta;
+    if(pipeTimer>=d.pipeInterval){pipeTimer=0;createPipe();}
+    if(d.bullets){bulletTimer+=delta;if(bulletTimer>=d.bulletInterval){bulletTimer=0;createBullet();}}
+    pipes.forEach(pipe=>{
+        pipe.x-=d.pipeSpeed*delta;
+        if(pipe.moving){
+            const m=Math.sin(performance.now()/1000*pipe.moveSpeed*pipe.moveDirection+pipe.moveOffset)*d.movingStrength;
+            pipe.top=Math.max(55,Math.min(H-groundHeight-pipe.gap-55,pipe.baseTop+m));
+            pipe.bottom=pipe.top+pipe.gap;
+        }
+        if(!pipe.passed&&pipe.x+pipeWidth<bird.x){
+            pipe.passed=true; score++; scoreElement.textContent=score; addParticles(bird.x,bird.y,7); saveGame(false); checkLevelUp();
+        }
+    });
+    pipes=pipes.filter(p=>p.x+pipeWidth>-10);
+    bullets.forEach(b=>{b.x-=d.bulletSpeed*b.speedFactor*delta;b.rotation+=7*delta;});
+    bullets=bullets.filter(b=>b.x>-40);
+    particles.forEach(p=>{p.x+=p.vx*delta;p.y+=p.vy*delta;p.life-=delta;});
+    particles=particles.filter(p=>p.life>0);
+
+    if(finishActive){
+        finishX-=d.pipeSpeed*delta;
+        const finishLine=document.getElementById("finishLine");
+        finishLine.style.left=finishX+"px";
+
+        if(finishX < bird.x-20){
+            finishActive=false;
+            finishLine.classList.add("hidden");
+            phaseComplete=true;
+            gameRunning=false;
+            levelBannerTimer=0;
+            addParticles(W/2,H/2,30);
+
+            if(!completedPhases.includes(level)){
+                completedPhases.push(level);
+                completedPhases.sort((a,b)=>a-b);
+            }
+
+            phaseStars[level]=Math.max(getPhaseStars(level),calculateStars(phaseTime));
+
+            if(!phaseBestTimes[level] || phaseTime < phaseBestTimes[level]){
+                phaseBestTimes[level]=Number(phaseTime.toFixed(2));
+                window.phaseBestTimes=phaseBestTimes;
+            }
+
+            lastPlayedPhase=Math.max(lastPlayedPhase,level+1);
+
+            // Salva imediatamente: a fase fica registrada como concluída.
+            saveGame(false);
+            renderPhaseList();
+
+            message.innerHTML = `
+                <h1>🏁 Fase concluída!</h1>
+                <p>Você terminou a <strong>Fase ${level}</strong>.</p>
+                <p>⏱️ Tempo: <strong>${phaseTime.toFixed(1)}s</strong></p>
+                <p>${starsText(calculateStars(phaseTime))} &nbsp; <strong>${calculateStars(phaseTime)} estrela${calculateStars(phaseTime)===1?"":"s"}</strong></p>
+                <button id="nextPhaseButton">Próxima fase</button>
+                <button id="phaseListButton">Escolher fase</button>
+                <button id="savePhaseButton">Salvar progresso</button>
+            `;
+            message.classList.remove("hidden");
+            document.getElementById("nextPhaseButton").addEventListener("click", startNextPhase);
+            document.getElementById("phaseListButton").addEventListener("click",()=>{
+                message.classList.add("hidden");
+                renderPhaseList();
+            });
+            document.getElementById("savePhaseButton").addEventListener("click",()=>saveGame(true));
+        }
+    }
+
+    if(levelBannerTimer>0) levelBannerTimer-=delta;
+
+    if(gameRunning && !phaseComplete && !gameOver){
+        phaseTime+=delta;
+        const phaseTimeElement=document.getElementById("phaseTime");
+        if(phaseTimeElement) phaseTimeElement.textContent=`⏱️ ${phaseTime.toFixed(1)}s`;
+    }
+
+    saveTimer+=delta;
+    if(saveTimer>=5){
+        saveTimer=0;
+        saveGame(false);
+    }
+
+    checkCollision();
+}
+
+function checkLevelUp(){
+    if(score > 0 && score % POINTS_PER_LEVEL === 0 && !finishActive){
+        finishActive=true;
+        finishX=W+80;
+        saveGame(false);
+        document.getElementById("finishLine").classList.remove("hidden");
+        levelBannerTimer=0;
+    }
+}
+function createBullet(){
+    const y=75+Math.random()*(H-groundHeight-150);
+    bullets.push({
+        x:W+25,
+        y,
+        radius:11,
+        rotation:0,
+        speedFactor:0.82+Math.random()*0.38
+    });
+}
+function addParticles(x,y,count){
+    for(let i=0;i<count;i++){const a=Math.random()*Math.PI*2,s=40+Math.random()*110;
+        particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.45+Math.random()*.5,maxLife:1});}
+}
+function checkCollision(){
+    if(
+        bird.y - bird.radius <= 0 ||
+        bird.y + bird.radius >= H - groundHeight
+    ){
+        endGame();
+        return;
+    }
+
+    for(const pipe of pipes){
+
+        const insidePipeX =
+            bird.x + bird.radius > pipe.x &&
+            bird.x - bird.radius < pipe.x + pipeWidth;
+
+        const hitsTop =
+            bird.y - bird.radius < pipe.top;
+
+        const hitsBottom =
+            bird.y + bird.radius > pipe.bottom;
+
+        if(insidePipeX && (hitsTop || hitsBottom)){
+            endGame();
+            return;
+        }
+    }
+
+    for(const bullet of bullets){
+        const dx=bird.x-bullet.x;
+        const dy=bird.y-bullet.y;
+        const distance=Math.sqrt(dx*dx+dy*dy);
+
+        if(distance < bird.radius+bullet.radius){
+            endGame();
+            return;
+        }
+    }
+}
+
+function endGame(){
+    if(gameOver) return;
+
+    gameRunning = false;
+    gameOver = true;
+    phaseComplete = false;
+    lastPlayedPhase=level;
+    finishActive = false;
+    document.getElementById("finishLine").classList.add("hidden");
+
+    message.innerHTML = `
+        <h1>💥 Fim de jogo!</h1>
+        <p>Sua pontuação: <strong>${score}</strong></p><p>Você chegou à <strong>Fase ${level}</strong>.</p>
+        <button id="restartButton">Jogar novamente</button>
+        <button id="saveAfterGameButton">Salvar progresso</button>
+    `;
+
+    message.classList.remove("hidden");
+
+    document
+        .getElementById("restartButton")
+        .addEventListener("click", startGame);
+
+    document
+        .getElementById("saveAfterGameButton")
+        .addEventListener("click",()=>{
+            saveGame(true);
+        });
+}
+
+function drawBackground(){
+    // Céu
+    const gradient = ctx.createLinearGradient(0,0,0,H);
+    gradient.addColorStop(0,"#70c5ce");
+    gradient.addColorStop(1,"#b9edf0");
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0,0,W,H);
+
+    // Nuvens
+    ctx.fillStyle = "rgba(255,255,255,.75)";
+
+    drawCloud(70,110,1);
+    drawCloud(300,180,.8);
+    drawCloud(200,330,.65);
+
+    // Chão
+    ctx.fillStyle = "#ded895";
+    ctx.fillRect(0,H-groundHeight,W,groundHeight);
+
+    ctx.fillStyle = "#8bc34a";
+    ctx.fillRect(0,H-groundHeight,W,15);
+
+    // Faixas do chão
+    ctx.fillStyle = "#c9bd72";
+
+    for(let x=-20;x<W;x+=35){
+        ctx.fillRect(x,H-groundHeight+25,20,8);
+    }
+}
+
+function drawCloud(x,y,scale){
+    ctx.beginPath();
+    ctx.arc(x,y,22*scale,0,Math.PI*2);
+    ctx.arc(x+25*scale,y-10*scale,28*scale,0,Math.PI*2);
+    ctx.arc(x+55*scale,y,20*scale,0,Math.PI*2);
+    ctx.fill();
+}
+
+function drawPipes(){
+    pipes.forEach(pipe=>{
+
+        const bottomY = pipe.bottom;
+        const bottomHeight = H-groundHeight-bottomY;
+
+        // Cano superior
+        drawPipe(pipe.x,0,pipeWidth,pipe.top,true);
+        if(pipe.moving){ctx.fillStyle="rgba(255,255,255,.35)";ctx.fillRect(pipe.x+12,Math.max(10,pipe.top-8),pipeWidth-24,4);}
+
+        // Cano inferior
+        drawPipe(
+            pipe.x,
+            bottomY,
+            pipeWidth,
+            bottomHeight,
+            false
+        );
+    });
+}
+
+function drawPipe(x,y,w,h,top){
+    ctx.fillStyle = "#58b947";
+    ctx.fillRect(x,y,w,h);
+
+    ctx.fillStyle = "#3c9635";
+    ctx.fillRect(x+8,y,10,h);
+
+    ctx.fillStyle = "#76d15d";
+
+    if(top){
+        ctx.fillRect(x-6,h-28,w+12,28);
+    }else{
+        ctx.fillRect(x-6,y,w+12,28);
+    }
+
+    ctx.strokeStyle = "#28762b";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x,y,w,h);
+}
+
+function shadeColor(hex, percent){
+    const n=parseInt(hex.slice(1),16);
+    const r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+    const factor=(100+percent)/100;
+    const rr=Math.max(0,Math.min(255,Math.round(r*factor)));
+    const gg=Math.max(0,Math.min(255,Math.round(g*factor)));
+    const bb=Math.max(0,Math.min(255,Math.round(b*factor)));
+    return `rgb(${rr},${gg},${bb})`;
+}
+
+function drawBird(){
+    ctx.save();
+
+    ctx.translate(bird.x,bird.y);
+    ctx.rotate(bird.rotation);
+
+    // Corpo
+    ctx.fillStyle = birdColor;
+    ctx.beginPath();
+    ctx.arc(0,0,bird.radius,0,Math.PI*2);
+    ctx.fill();
+
+    // Asa
+    ctx.fillStyle = shadeColor(birdColor,-28);
+    ctx.beginPath();
+    ctx.ellipse(-5,7,12,7,-0.3,0,Math.PI*2);
+    ctx.fill();
+
+    // Olho
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(8,-7,7,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle = "#222";
+    ctx.beginPath();
+    ctx.arc(10,-7,3,0,Math.PI*2);
+    ctx.fill();
+
+    // Bico
+    ctx.fillStyle = "#f28c28";
+    ctx.beginPath();
+    ctx.moveTo(14,0);
+    ctx.lineTo(32,6);
+    ctx.lineTo(14,11);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function drawFinishLine(){
+    if(!finishActive)return;
+
+    const x=finishX;
+    ctx.save();
+
+    // Poste
+    ctx.fillStyle="#eeeeee";
+    ctx.fillRect(x,70,10,H-groundHeight-70);
+    ctx.strokeStyle="#333";
+    ctx.lineWidth=2;
+    ctx.strokeRect(x,70,10,H-groundHeight-70);
+
+    // Bandeira quadriculada
+    const cell=18;
+    for(let row=0;row<2;row++){
+        for(let col=0;col<2;col++){
+            ctx.fillStyle=(row+col)%2===0?"#fff":"#222";
+            ctx.fillRect(x+10+col*cell,70+row*cell,cell,cell);
+        }
+    }
+
+    ctx.fillStyle="#222";
+    ctx.font="bold 16px Arial";
+    ctx.fillText("META",x-12,62);
+
+    ctx.restore();
+}
+
+function draw(){
+    drawBackground();
+    drawPipes();
+    drawBullets();
+    drawFinishLine();
+    drawBird();
+    drawParticles();
+    drawLevelBanner();
+}
+function drawBullets(){
+    bullets.forEach(b=>{ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.rotation);
+        ctx.fillStyle="#ff6b1a";ctx.beginPath();ctx.arc(0,0,b.radius,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle="#ffd43b";ctx.beginPath();ctx.arc(-3,-3,4,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle="#b52b1a";ctx.fillRect(-14,-3,5,6);ctx.restore();});
+}
+function drawParticles(){
+    particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life/p.maxLife);ctx.fillStyle="#fff";ctx.fillRect(p.x-2,p.y-2,4,4);});
+    ctx.globalAlpha=1;
+}
+function drawLevelBanner(){
+    if(levelBannerTimer<=0)return;
+    ctx.save();
+    ctx.globalAlpha=Math.min(1,levelBannerTimer*2);
+    ctx.fillStyle="rgba(0,0,0,.55)";
+    ctx.fillRect(55,H/2-45,W-110,90);
+    ctx.fillStyle="#fff";
+    ctx.textAlign="center";
+    ctx.font="bold 34px Arial";
+    ctx.fillText(`FASE ${level}!`,W/2,H/2+10);
+    ctx.restore();
+}
+
+function gameLoop(timestamp){
+    const delta = Math.min((timestamp-lastTime)/1000,0.03);
+    lastTime = timestamp;
+
+    if(gameRunning){
+        update(delta);
+    }
+
+    draw();
+
+    animationId = requestAnimationFrame(gameLoop);
+}
+
+canvas.addEventListener("pointerdown",event=>{
+    event.preventDefault();
+    flap();
+},{passive:false});
+
+canvas.addEventListener("touchstart",event=>{
+    event.preventDefault();
+},{passive:false});
+
+document.addEventListener("keydown",event=>{
+    if(event.code === "Space"){
+        event.preventDefault();
+        flap();
+    }
+});
+
+startButton.addEventListener("click",startGame);
+loadButton.addEventListener("click",loadGame);
+
+birdColorInput.addEventListener("input",()=>{
+    birdColor=birdColorInput.value;
+    saveStatus.textContent="Cor alterada. Comece ou continue para jogar.";
+    if(gameRunning) saveGame(false);
+});
+
+updateLoadButton();
+
+resetGame();
+draw();
+</script>
+
+</body>
+</html>
